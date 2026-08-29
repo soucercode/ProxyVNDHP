@@ -11,29 +11,21 @@ enum PatchError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .patchNotFound: return "Patch file not found"
-        case .invalidPatch: return "Patch file is invalid or empty"
-        case .targetNotFound: return "Target file not found in container"
-        case .backupFailed: return "Failed to backup original file"
-        case .applyFailed: return "Failed to apply patch"
-        case .verifyFailed: return "Patch verification failed"
-        case .restoreFailed: return "Failed to restore original file"
+        case .patchNotFound: return "Không tìm thấy file patch"
+        case .invalidPatch: return "File patch bị hỏng hoặc rỗng"
+        case .targetNotFound: return "Không tìm thấy game hoặc file đích"
+        case .backupFailed: return "Sao lưu file gốc thất bại"
+        case .applyFailed: return "Áp dụng patch thất bại"
+        case .verifyFailed: return "Xác minh patch thất bại"
+        case .restoreFailed: return "Khôi phục file gốc thất bại"
         }
     }
-}
-
-struct PatchTransaction {
-    let patchData: Data
-    let targetURL: URL
-    let backupURL: URL
-    let originalData: Data?
 }
 
 final class RealPatchManager {
     static let shared = RealPatchManager()
     private let fileManager = FileManager.default
     
-    // Thư mục backup trong sandbox của ProxyVN
     private var backupRootURL: URL {
         let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("PatchBackups", isDirectory: true)
@@ -43,47 +35,57 @@ final class RealPatchManager {
         try? fileManager.createDirectory(at: backupRootURL, withIntermediateDirectories: true)
     }
     
-    // MARK: - Apply Patch
+    // MARK: - ÁP DỤNG PATCH VÀO GAME
     
     func applyPatch(
         patchData: Data,
-        targetURL: URL,
-        backupURL: URL? = nil
+        bundleID: String,
+        relativePath: String
     ) throws {
-        // 1. Kiểm tra dữ liệu patch
+        // 1. Lấy container path của game
+        var error: NSString?
+        guard let containerPath = MCMActivateContainerPath(2, bundleID, false, &error) else {
+            let detail = error.map { String($0) } ?? "unknown"
+            throw PatchError.targetNotFound
+        }
+        
+        let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
+        let targetURL = containerURL.appendingPathComponent(relativePath)
+        
+        // 2. Kiểm tra dữ liệu patch
         guard !patchData.isEmpty else {
             throw PatchError.invalidPatch
         }
         
-        // 2. Đảm bảo thư mục đích tồn tại
+        // 3. Đảm bảo thư mục đích tồn tại
         let targetDirectory = targetURL.deletingLastPathComponent()
         try fileManager.createDirectory(at: targetDirectory, withIntermediateDirectories: true)
         
-        // 3. Backup file gốc (nếu tồn tại)
-        let backup = backupURL ?? backupURLFor(targetURL: targetURL)
+        // 4. Backup file gốc (nếu tồn tại)
+        let backupURL = backupURLFor(targetURL: targetURL)
         if fileManager.fileExists(atPath: targetURL.path) {
             do {
-                if fileManager.fileExists(atPath: backup.path) {
-                    try fileManager.removeItem(at: backup)
+                if fileManager.fileExists(atPath: backupURL.path) {
+                    try fileManager.removeItem(at: backupURL)
                 }
-                try fileManager.copyItem(at: targetURL, to: backup)
+                try fileManager.copyItem(at: targetURL, to: backupURL)
             } catch {
                 throw PatchError.backupFailed
             }
         }
         
-        // 4. Ghi patch mới
+        // 5. GHI ĐÈ PATCH
         do {
             try patchData.write(to: targetURL, options: .atomic)
         } catch {
             // Rollback nếu ghi thất bại
-            if fileManager.fileExists(atPath: backup.path) {
-                try? fileManager.copyItem(at: backup, to: targetURL)
+            if fileManager.fileExists(atPath: backupURL.path) {
+                try? fileManager.copyItem(at: backupURL, to: targetURL)
             }
             throw PatchError.applyFailed
         }
         
-        // 5. Verify
+        // 6. Xác minh
         guard fileManager.fileExists(atPath: targetURL.path) else {
             throw PatchError.verifyFailed
         }
@@ -91,22 +93,30 @@ final class RealPatchManager {
         let writtenData = try Data(contentsOf: targetURL)
         guard writtenData == patchData else {
             // Rollback nếu verify thất bại
-            if fileManager.fileExists(atPath: backup.path) {
-                try? fileManager.copyItem(at: backup, to: targetURL)
+            if fileManager.fileExists(atPath: backupURL.path) {
+                try? fileManager.copyItem(at: backupURL, to: targetURL)
             }
             throw PatchError.verifyFailed
         }
     }
     
-    // MARK: - Restore
+    // MARK: - KHÔI PHỤC FILE GỐC
     
     func restorePatch(
-        targetURL: URL,
-        backupURL: URL? = nil
+        bundleID: String,
+        relativePath: String
     ) throws {
-        let backup = backupURL ?? backupURLFor(targetURL: targetURL)
+        var error: NSString?
+        guard let containerPath = MCMActivateContainerPath(2, bundleID, false, &error) else {
+            let detail = error.map { String($0) } ?? "unknown"
+            throw PatchError.targetNotFound
+        }
         
-        guard fileManager.fileExists(atPath: backup.path) else {
+        let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
+        let targetURL = containerURL.appendingPathComponent(relativePath)
+        let backupURL = backupURLFor(targetURL: targetURL)
+        
+        guard fileManager.fileExists(atPath: backupURL.path) else {
             throw PatchError.restoreFailed
         }
         
@@ -114,22 +124,24 @@ final class RealPatchManager {
             try fileManager.removeItem(at: targetURL)
         }
         
-        try fileManager.copyItem(at: backup, to: targetURL)
-        
-        // Xóa backup sau khi restore thành công
-        try? fileManager.removeItem(at: backup)
+        try fileManager.copyItem(at: backupURL, to: targetURL)
+        try? fileManager.removeItem(at: backupURL)
     }
     
-    // MARK: - Helpers
+    // MARK: - KIỂM TRA TRẠNG THÁI
     
-    func isPatchApplied(targetURL: URL, patchData: Data) -> Bool {
+    func isPatchApplied(
+        bundleID: String,
+        relativePath: String,
+        patchData: Data
+    ) -> Bool {
+        guard let containerPath = MCMActivateContainerPath(2, bundleID, false, nil) else {
+            return false
+        }
+        let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
+        let targetURL = containerURL.appendingPathComponent(relativePath)
         guard let currentData = try? Data(contentsOf: targetURL) else { return false }
         return currentData == patchData
-    }
-    
-    func hasBackup(for targetURL: URL) -> Bool {
-        let backup = backupURLFor(targetURL: targetURL)
-        return fileManager.fileExists(atPath: backup.path)
     }
     
     private func backupURLFor(targetURL: URL) -> URL {
