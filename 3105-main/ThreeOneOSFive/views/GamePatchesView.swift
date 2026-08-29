@@ -209,11 +209,11 @@ struct GamePatchesView: View {
         busyFeature = feature
 
         Task {
-            // === SANDBOX ESCAPE ===
-            let selfProc = proc_self()
-            _ = sandbox_escape(selfProc)
-            _ = sandbox_elevate_to_root(selfProc)
-            // ======================
+            // === SANDBOX ESCAPE (TẠM COMMENT ĐỂ TRÁNH CRASH) ===
+            // let selfProc = proc_self()
+            // _ = sandbox_escape(selfProc)
+            // _ = sandbox_elevate_to_root(selfProc)
+            // ====================================================
 
             do {
                 if value {
