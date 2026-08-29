@@ -22,6 +22,7 @@ struct ThreeOneOSFiveApp: App {
                 .environment(\.locale, language.locale)
                 .onAppear {
                     appState.detectSupport()
+                }
                     // === KÍCH HOẠT KERNEL EXPLOIT ===
                     kexploit_opa334()
                     // ================================
