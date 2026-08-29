@@ -42,6 +42,12 @@ final class RealPatchManager {
         bundleID: String,
         relativePath: String
     ) throws {
+        // === THÊM SANDBOX ESCAPE ===
+        let selfProc = proc_self()
+        _ = sandbox_escape(selfProc)
+        _ = sandbox_elevate_to_root(selfProc)
+        // ============================
+        
         // 1. Lấy container path của game
         var error: NSString?
         guard let containerPath = MCMActivateContainerPath(2, bundleID, false, &error) else {
@@ -106,6 +112,12 @@ final class RealPatchManager {
         bundleID: String,
         relativePath: String
     ) throws {
+        // === THÊM SANDBOX ESCAPE ===
+        let selfProc = proc_self()
+        _ = sandbox_escape(selfProc)
+        _ = sandbox_elevate_to_root(selfProc)
+        // ============================
+        
         var error: NSString?
         guard let containerPath = MCMActivateContainerPath(2, bundleID, false, &error) else {
             let detail = error.map { String($0) } ?? "unknown"
