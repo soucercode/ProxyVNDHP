@@ -54,7 +54,7 @@ struct GamePatchesView: View {
             }
         } message: {
             if let feature = pendingFeature {
-                Text("Bạn có chắc muốn \(pendingValue ? "bật" : "tắt") \(feature.rawValue)?")
+                Text("Bạn có chắc muốn \(pendingValue ? "bật" : "tắt") \(feature.rawValue)?\nMọi file gốc sẽ được sao lưu trước khi ghi.")
             } else {
                 Text("")
             }
@@ -209,20 +209,26 @@ struct GamePatchesView: View {
         busyFeature = feature
 
         Task {
+            // === SANDBOX ESCAPE ===
+            let selfProc = proc_self()
+            _ = sandbox_escape(selfProc)
+            _ = sandbox_elevate_to_root(selfProc)
+            // ======================
+
             do {
                 if value {
-                    // Lấy dữ liệu patch từ embedded (không cần file trong bundle)
+                    // Lấy dữ liệu patch từ embedded
                     guard let patchData = PatchAssetLoader.loadPatchData(for: definition) else {
                         throw PatchPackageError.invalidProject
                     }
-                    
+
                     // Lấy container path bằng MCMActivateContainerPath
                     var error: NSString?
                     guard let containerPath = MCMActivateContainerPath(2, game.bundleID, false, &error) else {
                         let detail = error.map { String($0) } ?? "unknown"
                         throw PatchPackageError.targetAppUnavailable("\(game.bundleID) (MCM: \(detail))")
                     }
-                    
+
                     // Giải mã file .3105 từ dữ liệu nhúng
                     let summary = try PatchPackageCodec.inspect(patchData)
                     let decoded: DecodedPatchPackage
