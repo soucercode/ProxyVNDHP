@@ -4,9 +4,7 @@ enum LocalGameVariant: String, CaseIterable, Identifiable {
     case freeFire = "com.dts.freefireth"
     case freeFireMax = "com.dts.freefiremax"
 
-    var id: String {
-        rawValue
-    }
+    var id: String { rawValue }
 
     var displayName: String {
         switch self {
@@ -26,7 +24,6 @@ enum LocalGameVariant: String, CaseIterable, Identifiable {
         }
     }
 
-    // Đường dẫn tương đối được dùng làm cấu hình đích.
     var patchRelativePath: String {
         "Documents/contentcache/Compulsory/ios/gameassetbundles/cache_res.CfnFf59sr1SbsqQ6JqTKsEusjKs~3D"
     }
@@ -36,15 +33,10 @@ enum LocalPatchFeature: String, CaseIterable, Identifiable {
     case aimBody = "Proxy Aim Body"
     case aimNeckV1 = "Proxy Aim Neck V1"
     case aimNeckV2 = "Proxy Aim Neck V2"
+    case aimDrag = "Proxy Aim Drag"
     case magicV4 = "Magic V4"
 
-    // Các chức năng này chưa có .3105 trong definitions.
-    case aimDrag = "Proxy Aim Drag"
-    case location = "Định Vị"
-
-    var id: String {
-        rawValue
-    }
+    var id: String { rawValue }
 }
 
 struct LocalPatchDefinition: Identifiable {
@@ -66,8 +58,7 @@ enum LocalPatchDefinitions {
 
     static let all: [LocalPatchDefinition] = [
 
-        // MARK: - Free Fire
-
+        // Free Fire
         .init(
             id: "ffth.body",
             feature: .aimBody,
@@ -93,6 +84,14 @@ enum LocalPatchDefinitions {
         ),
 
         .init(
+            id: "ffth.aimDrag",
+            feature: .aimDrag,
+            game: .freeFire,
+            resourceName: "Aim Drag FFTH",
+            relativePath: patchRelativePath
+        ),
+
+        .init(
             id: "ffth.magic",
             feature: .magicV4,
             game: .freeFire,
@@ -100,8 +99,7 @@ enum LocalPatchDefinitions {
             relativePath: patchRelativePath
         ),
 
-        // MARK: - Free Fire Max
-
+        // Free Fire MAX
         .init(
             id: "ffmax.body",
             feature: .aimBody,
@@ -127,6 +125,14 @@ enum LocalPatchDefinitions {
         ),
 
         .init(
+            id: "ffmax.aimDrag",
+            feature: .aimDrag,
+            game: .freeFireMax,
+            resourceName: "Aim Drag FFMAX",
+            relativePath: patchRelativePath
+        ),
+
+        .init(
             id: "ffmax.magic",
             feature: .magicV4,
             game: .freeFireMax,
@@ -139,7 +145,6 @@ enum LocalPatchDefinitions {
         for feature: LocalPatchFeature,
         game: LocalGameVariant
     ) -> LocalPatchDefinition? {
-
         all.first {
             $0.feature == feature &&
             $0.game == game
@@ -149,20 +154,8 @@ enum LocalPatchDefinitions {
     static func definitions(
         for game: LocalGameVariant
     ) -> [LocalPatchDefinition] {
-
         all.filter {
             $0.game == game
         }
-    }
-
-    static func isAvailable(
-        feature: LocalPatchFeature,
-        game: LocalGameVariant
-    ) -> Bool {
-
-        definition(
-            for: feature,
-            game: game
-        ) != nil
     }
 }
