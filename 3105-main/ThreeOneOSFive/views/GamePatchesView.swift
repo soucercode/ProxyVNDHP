@@ -36,7 +36,11 @@ struct GamePatchesView: View {
         .navigationTitle(localGame?.displayName ?? game.name)
         .navigationBarTitleDisplayMode(.inline)
         .toast($toast)
-        .task { refreshAvailability() }
+        .task {
+            await MainActor.run {
+                refreshAvailability()
+                 }
+            }
         .alert("Chưa sẵn sàng", isPresented: $showUnsupported) {
             Button("OK", role: .cancel) {}
         } message: {
