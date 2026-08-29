@@ -307,8 +307,8 @@ struct GamePatchesView: View {
         switch feature {
         case .aimBody, .aimNeckV1, .aimNeckV2, .magicV4, .aimDrag:
             return "bolt.fill"
-        case .location:
-            return "location.fill"
+        default:
+            return "bolt.fill"
         }
     }
 
@@ -319,7 +319,8 @@ struct GamePatchesView: View {
         case .aimNeckV2: return .cyan
         case .magicV4: return .green
         case .aimDrag: return .purple
-        case .location: return .gray
+        default:
+            return .gray
         }
     }
 }
